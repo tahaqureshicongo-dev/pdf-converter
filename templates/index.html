@@ -25,7 +25,7 @@
             color: white; padding: 10px 20px; border-radius: 5px; margin-top: 15px;
         }
         .btn-download:hover { background: #218838 !important; }
-        input[type="text"], select { padding: 8px; width: 85%; margin-top: 10px; border: 1px solid #ccc; border-radius: 5px; }
+        input[type="text"], input[type="number"], select { padding: 8px; width: 85%; margin-top: 10px; border: 1px solid #ccc; border-radius: 5px; }
         .loading { color: #e5322d; font-weight: bold; margin-top: 15px; display: none; }
         .success-box { display: none; margin-top: 15px; }
     </style>
@@ -45,7 +45,7 @@
                 <button id="btn1" type="submit">Convert to Word</button>
                 <p id="loading1" class="loading">Converting... Please wait</p>
                 <div id="success1" class="success-box">
-                    <a id="link1" href="#" class="btn-download">⬇️ Download File</a>
+                    <a id="link1" href="#" class="btn-download">⬇️ Download Word File</a>
                 </div>
             </form>
         </div>
@@ -73,11 +73,41 @@
                 </div>
             </form>
         </div>
+
+        <!-- Feature 3: Sign/Stamp PDF (NAYA FEATURE) -->
+        <div class="card">
+            <h3>🖋️ Sign / Stamp PDF</h3>
+            <p>PDF par apna sign ya stamp lagayein.</p>
+            <form id="form3" onsubmit="handleConvert(event, 'form3', '/sign-pdf', 'loading3', 'success3', 'btn3')">
+                <label style="font-size:12px; color:#555;">1. PDF File Chunein:</label>
+                <input type="file" name="pdf_file" accept=".pdf" required>
+                <br>
+                <label style="font-size:12px; color:#555; display:block; margin-top:10px;">2. Sign/Stamp ki Photo (PNG/JPG):</label>
+                <input type="file" name="sign_image" accept="image/png, image/jpeg" required>
+                <br>
+                <label style="font-size:12px; color:#555; display:block; margin-top:10px;">3. Kis Page Par? (Number):</label>
+                <input type="number" name="page_num" value="1" min="1" required>
+                <br>
+                <label style="font-size:12px; color:#555; display:block; margin-top:10px;">4. Kahan Lagana Hai?</label>
+                <select name="position">
+                    <option value="bottom-right">Bottom-Right (Neeche Right)</option>
+                    <option value="bottom-left">Bottom-Left (Neeche Left)</option>
+                    <option value="top-right">Top-Right (Upar Right)</option>
+                    <option value="center">Center (Beech Mein)</option>
+                </select>
+                <br>
+                <button id="btn3" type="submit">Sign PDF & Download</button>
+                <p id="loading3" class="loading">Sign lag raha hai... Please wait</p>
+                <div id="success3" class="success-box">
+                    <a id="link3" href="#" class="btn-download">⬇️ Download Signed PDF</a>
+                </div>
+            </form>
+        </div>
     </div>
 
     <script>
         async function handleConvert(event, formId, endpoint, loadingId, successId, btnId) {
-            event.preventDefault(); // Page reload hone se rokta hai
+            event.preventDefault();
             
             var form = document.getElementById(formId);
             var formData = new FormData(form);
@@ -85,7 +115,6 @@
             var successBox = document.getElementById(successId);
             var btn = document.getElementById(btnId);
             
-            // Reset UI
             loading.style.display = 'block';
             successBox.style.display = 'none';
             btn.disabled = true;
@@ -97,7 +126,6 @@
                 if (data.success) {
                     loading.style.display = 'none';
                     successBox.style.display = 'block';
-                    // Download link set karein
                     var downloadLink = document.getElementById(successId.replace('success', 'link'));
                     downloadLink.href = '/download/' + data.download_file;
                 } else {
