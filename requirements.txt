@@ -1,0 +1,5 @@
+Flask
+pdf2docx
+PyMuPDF
+docx2pdf
+gunicorn
