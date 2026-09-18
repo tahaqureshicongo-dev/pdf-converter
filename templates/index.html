@@ -11,45 +11,106 @@
         .container { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; margin-top: 30px; }
         .card {
             background: white; border: 2px dashed #ccc; border-radius: 10px;
-            padding: 30px; width: 350px; text-align: center;
+            padding: 25px; width: 300px; text-align: center;
         }
         .card:hover { border-color: #e5322d; }
         button {
-            background: #e5322d; color: white; border: none; padding: 12px 25px;
-            font-size: 16px; border-radius: 5px; cursor: pointer; margin-top: 15px;
+            background: #e5322d; color: white; border: none; padding: 10px 20px;
+            font-size: 15px; border-radius: 5px; cursor: pointer; margin-top: 15px;
         }
         button:hover { background: #c02722; }
-        input[type="text"] { padding: 10px; width: 80%; margin-top: 10px; border: 1px solid #ccc; border-radius: 5px; }
+        button:disabled { background: #999; cursor: not-allowed; }
+        .btn-download {
+            background: #28a745 !important; text-decoration: none; display: inline-block;
+            color: white; padding: 10px 20px; border-radius: 5px; margin-top: 15px;
+        }
+        .btn-download:hover { background: #218838 !important; }
+        input[type="text"], select { padding: 8px; width: 85%; margin-top: 10px; border: 1px solid #ccc; border-radius: 5px; }
+        .loading { color: #e5322d; font-weight: bold; margin-top: 15px; display: none; }
+        .success-box { display: none; margin-top: 15px; }
     </style>
 </head>
 <body>
     <h1>Free PDF Tools</h1>
-    <p>Apni PDF files ko convert karein ya edit karein bilkul free!</p>
+    <p>Apni files ko convert karein ya edit karein bilkul free!</p>
     
     <div class="container">
         <!-- Feature 1: PDF to Word -->
         <div class="card">
-            <h3>📄 PDF to Word Converter</h3>
+            <h3>📄 PDF to Word</h3>
             <p>PDF file ko Word (DOCX) mein badlein.</p>
-            <form action="/convert" method="POST" enctype="multipart/form-data">
+            <form id="form1" onsubmit="handleConvert(event, 'form1', '/convert', 'loading1', 'success1', 'btn1')">
                 <input type="file" name="file" accept=".pdf" required>
                 <br>
-                <button type="submit">Convert to Word</button>
+                <button id="btn1" type="submit">Convert to Word</button>
+                <p id="loading1" class="loading">Converting... Please wait</p>
+                <div id="success1" class="success-box">
+                    <a id="link1" href="#" class="btn-download">⬇️ Download File</a>
+                </div>
             </form>
         </div>
 
-        <!-- Feature 2: PDF Editor (Text Add) -->
+        <!-- Feature 2: Add Text to PDF -->
         <div class="card">
-            <h3>✍️ Add Text/Sign to PDF</h3>
-            <p>PDF ke pehle page par apna naam ya text add karein.</p>
-            <form action="/edit-pdf" method="POST" enctype="multipart/form-data">
+            <h3>✍️ Add Text to PDF</h3>
+            <p>PDF ke pehle page par text add karein.</p>
+            <form id="form2" onsubmit="handleConvert(event, 'form2', '/edit-pdf', 'loading2', 'success2', 'btn2')">
                 <input type="file" name="file" accept=".pdf" required>
                 <br>
-                <input type="text" name="text_to_add" placeholder="Yahan text likhein (jaise: Signed by Rahul)" required>
+                <input type="text" name="text_to_add" placeholder="Text likhein (jaise: Signed)" required>
                 <br>
-                <button type="submit">Add Text & Download PDF</button>
+                <select name="position">
+                    <option value="top-left">Top-Left (Upar Left)</option>
+                    <option value="top-right">Top-Right (Upar Right)</option>
+                    <option value="center">Center (Beech Mein)</option>
+                    <option value="bottom-left">Bottom-Left (Neeche Left)</option>
+                </select>
+                <br>
+                <button id="btn2" type="submit">Add Text & Download</button>
+                <p id="loading2" class="loading">Processing... Please wait</p>
+                <div id="success2" class="success-box">
+                    <a id="link2" href="#" class="btn-download">⬇️ Download PDF</a>
+                </div>
             </form>
         </div>
     </div>
+
+    <script>
+        async function handleConvert(event, formId, endpoint, loadingId, successId, btnId) {
+            event.preventDefault(); // Page reload hone se rokta hai
+            
+            var form = document.getElementById(formId);
+            var formData = new FormData(form);
+            var loading = document.getElementById(loadingId);
+            var successBox = document.getElementById(successId);
+            var btn = document.getElementById(btnId);
+            
+            // Reset UI
+            loading.style.display = 'block';
+            successBox.style.display = 'none';
+            btn.disabled = true;
+            
+            try {
+                var response = await fetch(endpoint, { method: 'POST', body: formData });
+                var data = await response.json();
+                
+                if (data.success) {
+                    loading.style.display = 'none';
+                    successBox.style.display = 'block';
+                    // Download link set karein
+                    var downloadLink = document.getElementById(successId.replace('success', 'link'));
+                    downloadLink.href = '/download/' + data.download_file;
+                } else {
+                    alert('Error: ' + data.error);
+                    loading.style.display = 'none';
+                    btn.disabled = false;
+                }
+            } catch (error) {
+                alert('Kuch ghalat ho gaya. Dobara koshish karein.');
+                loading.style.display = 'none';
+                btn.disabled = false;
+            }
+        }
+    </script>
 </body>
 </html>
