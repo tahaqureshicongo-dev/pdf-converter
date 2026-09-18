@@ -33,11 +33,21 @@
             padding-left: 10px;
         }
         .pdf-page img { display: block; width: 100%; height: auto; }
-        #drag-sign {
-            position: absolute; cursor: move; width: 100px;
-            border: 2px dashed red; z-index: 100; display: none;
-            top: 0; left: 0;
+
+        /* Sign Box with Resize Handle */
+        #sign-box {
+            position: absolute; display: none; z-index: 100;
+            border: 2px dashed #e5322d; box-sizing: border-box;
+            cursor: move; top: 0; left: 0; width: 100px;
         }
+        #drag-sign { width: 100%; display: block; pointer-events: none; }
+        #resize-handle {
+            position: absolute; bottom: -8px; right: -8px;
+            width: 14px; height: 14px; background: #007bff;
+            border: 2px solid #fff; border-radius: 50%;
+            cursor: se-resize; box-shadow: 0 0 3px rgba(0,0,0,0.5);
+        }
+
         .hint { font-size: 11px; color: #888; margin-top: 5px; }
         #selected-page-info {
             display: none; font-size: 13px; color: #e5322d; font-weight: bold; margin-top: 10px;
@@ -64,10 +74,10 @@
             </form>
         </div>
 
-        <!-- Feature 2: Sign PDF with Preview -->
+        <!-- Feature 2: Sign PDF with Preview & Resize -->
         <div class="card" style="width: 380px;">
             <h3>🖋️ Sign / Stamp PDF</h3>
-            <p>PDF aur Sign upload karein, phir sign ko drag karke set karein.</p>
+            <p>PDF aur Sign upload karein, phir sign ko drag aur resize karein.</p>
             <form id="form3" onsubmit="handleDragSubmit(event)">
                 <label style="font-size:12px; color:#555;">1. PDF File Chunein:</label>
                 <input type="file" id="pdfFile" accept=".pdf" required onchange="loadPDFPreview(event)">
@@ -77,9 +87,12 @@
                 
                 <div id="pdf-preview-wrapper">
                     <!-- Pages yahan aayenge -->
-                    <img id="drag-sign" src="" alt="Sign" draggable="true">
+                    <div id="sign-box">
+                        <img id="drag-sign" src="" alt="Sign">
+                        <div id="resize-handle"></div>
+                    </div>
                 </div>
-                <p class="hint">💡 Sign ko drag karke sahi jagah par chhodein</p>
+                <p class="hint">💡 Sign ko drag karein. Size badalne ke liye <b>Blue Circle</b> ko drag karein.</p>
                 <p id="selected-page-info"></p>
 
                 <button id="btn3" type="submit">Sign PDF & Download</button>
@@ -118,7 +131,7 @@
             } catch (error) { alert('Error!'); loading.style.display = 'none'; btn.disabled = false; }
         }
 
-        // PDF Preview Loader (FIXED VERSION)
+        // PDF Preview Loader
         async function loadPDFPreview(event) {
             var file = event.target.files[0];
             if (!file) return;
@@ -127,30 +140,27 @@
             formData.append('file', file);
 
             var wrapper = document.getElementById('pdf-preview-wrapper');
-            var dragSign = document.getElementById('drag-sign'); // Get element once
+            var signBox = document.getElementById('sign-box');
 
             wrapper.style.display = 'block';
             
-            // Remove old pages and loading text (but NOT drag-sign)
+            // Remove old pages and loading text
             var oldPages = wrapper.querySelectorAll('.pdf-page');
             oldPages.forEach(function(page) { page.remove(); });
             var oldLoading = wrapper.querySelector('.temp-loading');
             if (oldLoading) oldLoading.remove();
 
-            // Create temporary loading message
             var loadingMsg = document.createElement('p');
             loadingMsg.className = 'temp-loading';
             loadingMsg.style.padding = '20px';
             loadingMsg.textContent = 'PDF load ho rahi hai... Please wait';
             wrapper.appendChild(loadingMsg);
             
-            dragSign.style.display = 'none'; // Hide sign while loading
+            signBox.style.display = 'none'; // Hide sign while loading
 
             try {
                 var response = await fetch('/preview-pdf', { method: 'POST', body: formData });
-                if (!response.ok) {
-                    throw new Error('Server error: ' + response.status);
-                }
+                if (!response.ok) throw new Error('Server error: ' + response.status);
                 var data = await response.json();
                 
                 if (data.success) {
@@ -158,7 +168,6 @@
                     totalPages = data.total_pages;
                     pageElements = [];
 
-                    // Remove loading message
                     loadingMsg.remove();
 
                     data.pages.forEach(function(p) {
@@ -182,10 +191,10 @@
                     });
 
                     // Show and position the sign
-                    dragSign.style.display = 'block';
-                    dragSign.style.width = '100px';
-                    dragSign.style.left = '50%';
-                    dragSign.style.top = '50px';
+                    signBox.style.display = 'block';
+                    signBox.style.width = '100px';
+                    signBox.style.left = '50px';
+                    signBox.style.top = '50px';
                     
                     updateSelectedPage();
                 } else {
@@ -204,53 +213,70 @@
             if (file) {
                 var reader = new FileReader();
                 reader.onload = function(e) {
-                    var dragSign = document.getElementById('drag-sign');
-                    dragSign.src = e.target.result;
-                    dragSign.style.display = 'block';
+                    document.getElementById('drag-sign').src = e.target.result;
+                    document.getElementById('sign-box').style.display = 'block';
                 };
                 reader.readAsDataURL(file);
             }
         }
 
-        // Drag Logic
-        var dragSign = document.getElementById('drag-sign');
+        // Drag & Resize Logic
+        var signBox = document.getElementById('sign-box');
         var wrapper = document.getElementById('pdf-preview-wrapper');
+        var resizeHandle = document.getElementById('resize-handle');
         var isDragging = false;
-        var offsetX = 0, offsetY = 0;
+        var isResizing = false;
+        var startX, startY, startLeft, startTop, startWidth;
 
-        dragSign.addEventListener('mousedown', function(e) {
+        signBox.addEventListener('mousedown', function(e) {
+            if (e.target === resizeHandle) return; // Resize handle alag handle karega
             isDragging = true;
             e.preventDefault();
-            var rect = dragSign.getBoundingClientRect();
-            offsetX = e.clientX - rect.left;
-            offsetY = e.clientY - rect.top;
+            startX = e.clientX;
+            startY = e.clientY;
+            startLeft = parseInt(signBox.style.left) || 0;
+            startTop = parseInt(signBox.style.top) || 0;
+        });
+
+        resizeHandle.addEventListener('mousedown', function(e) {
+            isResizing = true;
+            e.preventDefault();
+            e.stopPropagation(); // Drag ko rokne ke liye
+            startX = e.clientX;
+            startWidth = signBox.offsetWidth;
         });
 
         document.addEventListener('mousemove', function(e) {
-            if (!isDragging) return;
-            var wrapperRect = wrapper.getBoundingClientRect();
-            var x = e.clientX - wrapperRect.left - offsetX + wrapper.scrollLeft;
-            var y = e.clientY - wrapperRect.top - offsetY + wrapper.scrollTop;
-            
-            x = Math.max(0, Math.min(x, wrapper.scrollWidth - dragSign.offsetWidth));
-            y = Math.max(0, Math.min(y, wrapper.scrollHeight - dragSign.offsetHeight));
-
-            dragSign.style.left = x + 'px';
-            dragSign.style.top = y + 'px';
+            if (isDragging) {
+                var dx = e.clientX - startX;
+                var dy = e.clientY - startY;
+                var newLeft = startLeft + dx;
+                var newTop = startTop + dy;
+                signBox.style.left = newLeft + 'px';
+                signBox.style.top = newTop + 'px';
+            } else if (isResizing) {
+                var dx = e.clientX - startX;
+                var newWidth = startWidth + dx;
+                if (newWidth > 30) { // Minimum size 30px
+                    signBox.style.width = newWidth + 'px';
+                }
+            }
         });
 
         document.addEventListener('mouseup', function() {
-            if (isDragging) {
+            if (isDragging || isResizing) {
                 isDragging = false;
+                isResizing = false;
                 updateSelectedPage();
             }
         });
 
+        // Detect which page the sign is on
         function updateSelectedPage() {
             if (pageElements.length === 0) return;
 
-            var signTop = parseInt(dragSign.style.top) || 0;
-            var signCenterY = signTop + dragSign.offsetHeight / 2;
+            var signTop = parseInt(signBox.style.top) || 0;
+            var signCenterY = signTop + signBox.offsetHeight / 2;
 
             var selectedPage = 1;
             for (var i = 0; i < pageElements.length; i++) {
@@ -267,16 +293,17 @@
             document.getElementById('selected-page-info').textContent = '📍 Sign Page ' + selectedPage + ' par lagega';
         }
 
+        // Submit Sign
         async function handleDragSubmit(event) {
             event.preventDefault();
             var pdfFile = document.getElementById('pdfFile').files[0];
             var signFile = document.getElementById('signFile').files[0];
             if (!pdfFile || !signFile) { alert('Dono files select karein'); return; }
 
-            var signTop = parseInt(dragSign.style.top) || 0;
-            var signLeft = parseInt(dragSign.style.left) || 0;
-            var signCenterY = signTop + dragSign.offsetHeight / 2;
-            var signCenterX = signLeft + dragSign.offsetWidth / 2;
+            var signTop = parseInt(signBox.style.top) || 0;
+            var signLeft = parseInt(signBox.style.left) || 0;
+            var signCenterY = signTop + signBox.offsetHeight / 2;
+            var signCenterX = signLeft + signBox.offsetWidth / 2;
 
             var selectedPageNum = 1;
             var pageEl = null;
@@ -300,7 +327,7 @@
 
             var x_percent = ((signCenterX - pageLeft) / pageWidth) * 100;
             var y_percent = ((signCenterY - pageTop) / pageHeight) * 100;
-            var width_percent = (dragSign.offsetWidth / pageWidth) * 100;
+            var width_percent = (signBox.offsetWidth / pageWidth) * 100;
 
             var formData = new FormData();
             formData.append('pdf_file', pdfFile);
