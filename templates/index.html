@@ -118,7 +118,7 @@
             } catch (error) { alert('Error!'); loading.style.display = 'none'; btn.disabled = false; }
         }
 
-        // PDF Preview Loader
+        // PDF Preview Loader (FIXED VERSION)
         async function loadPDFPreview(event) {
             var file = event.target.files[0];
             if (!file) return;
@@ -127,8 +127,24 @@
             formData.append('file', file);
 
             var wrapper = document.getElementById('pdf-preview-wrapper');
+            var dragSign = document.getElementById('drag-sign'); // Get element once
+
             wrapper.style.display = 'block';
-            wrapper.innerHTML = '<p style="padding:20px;">PDF load ho rahi hai... Please wait</p>';
+            
+            // Remove old pages and loading text (but NOT drag-sign)
+            var oldPages = wrapper.querySelectorAll('.pdf-page');
+            oldPages.forEach(function(page) { page.remove(); });
+            var oldLoading = wrapper.querySelector('.temp-loading');
+            if (oldLoading) oldLoading.remove();
+
+            // Create temporary loading message
+            var loadingMsg = document.createElement('p');
+            loadingMsg.className = 'temp-loading';
+            loadingMsg.style.padding = '20px';
+            loadingMsg.textContent = 'PDF load ho rahi hai... Please wait';
+            wrapper.appendChild(loadingMsg);
+            
+            dragSign.style.display = 'none'; // Hide sign while loading
 
             try {
                 var response = await fetch('/preview-pdf', { method: 'POST', body: formData });
@@ -141,7 +157,9 @@
                     pdfFilename = data.pdf_filename;
                     totalPages = data.total_pages;
                     pageElements = [];
-                    wrapper.innerHTML = '';
+
+                    // Remove loading message
+                    loadingMsg.remove();
 
                     data.pages.forEach(function(p) {
                         var pageDiv = document.createElement('div');
@@ -163,18 +181,20 @@
                         pageElements.push({ page_num: p.page_num, element: pageDiv });
                     });
 
-                    var dragSign = document.getElementById('drag-sign');
+                    // Show and position the sign
                     dragSign.style.display = 'block';
                     dragSign.style.width = '100px';
                     dragSign.style.left = '50%';
                     dragSign.style.top = '50px';
-                    wrapper.appendChild(dragSign);
+                    
                     updateSelectedPage();
                 } else {
-                    wrapper.innerHTML = '<p style="color:red; padding:20px;">Error: ' + data.error + '</p>';
+                    loadingMsg.textContent = 'Error: ' + data.error;
+                    loadingMsg.style.color = 'red';
                 }
             } catch (error) {
-                wrapper.innerHTML = '<p style="color:red; padding:20px;">Error: ' + error.message + '</p>';
+                loadingMsg.textContent = 'Error: ' + error.message;
+                loadingMsg.style.color = 'red';
             }
         }
 
@@ -226,7 +246,6 @@
             }
         });
 
-        // Detect which page the sign is on
         function updateSelectedPage() {
             if (pageElements.length === 0) return;
 
@@ -248,7 +267,6 @@
             document.getElementById('selected-page-info').textContent = '📍 Sign Page ' + selectedPage + ' par lagega';
         }
 
-        // Submit Sign
         async function handleDragSubmit(event) {
             event.preventDefault();
             var pdfFile = document.getElementById('pdfFile').files[0];
