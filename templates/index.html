@@ -3,36 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Tools - Free</title>
+    <title>Free PDF Tools</title>
     <style>
         body { font-family: Arial, sans-serif; background: #f4f4f9; text-align: center; padding: 20px; }
         h1 { color: #333; font-size: 32px; }
         p { color: #666; }
         .container { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; margin-top: 30px; }
-        .card {
-            background: white; border: 2px dashed #ccc; border-radius: 10px;
-            padding: 25px; width: 300px; text-align: center;
-        }
+        .card { background: white; border: 2px dashed #ccc; border-radius: 10px; padding: 25px; width: 320px; text-align: center; }
         .card:hover { border-color: #e5322d; }
-        button {
-            background: #e5322d; color: white; border: none; padding: 10px 20px;
-            font-size: 15px; border-radius: 5px; cursor: pointer; margin-top: 15px;
-        }
+        button { background: #e5322d; color: white; border: none; padding: 10px 20px; font-size: 15px; border-radius: 5px; cursor: pointer; margin-top: 15px; }
         button:hover { background: #c02722; }
         button:disabled { background: #999; cursor: not-allowed; }
-        .btn-download {
-            background: #28a745 !important; text-decoration: none; display: inline-block;
-            color: white; padding: 10px 20px; border-radius: 5px; margin-top: 15px;
-        }
+        .btn-download { background: #28a745 !important; text-decoration: none; display: inline-block; color: white; padding: 10px 20px; border-radius: 5px; margin-top: 15px; }
         .btn-download:hover { background: #218838 !important; }
         input[type="text"], input[type="number"], select { padding: 8px; width: 85%; margin-top: 10px; border: 1px solid #ccc; border-radius: 5px; }
         .loading { color: #e5322d; font-weight: bold; margin-top: 15px; display: none; }
         .success-box { display: none; margin-top: 15px; }
+
+        /* Drag & Drop Area Styling */
+        #drag-area {
+            width: 100%; height: 300px; background: #fff; border: 2px solid #333;
+            margin-top: 15px; position: relative; overflow: hidden;
+            display: none;
+        }
+        #drag-area img {
+            position: absolute; cursor: move; width: 100px;
+            border: 1px dashed red;
+        }
     </style>
 </head>
 <body>
     <h1>Free PDF Tools</h1>
-    <p>Apni files ko convert karein ya edit karein bilkul free!</p>
+    <p>Apni PDF files ko convert karein ya sign karein bilkul free!</p>
     
     <div class="container">
         <!-- Feature 1: PDF to Word -->
@@ -50,52 +52,22 @@
             </form>
         </div>
 
-        <!-- Feature 2: Add Text to PDF -->
-        <div class="card">
-            <h3>✍️ Add Text to PDF</h3>
-            <p>PDF ke pehle page par text add karein.</p>
-            <form id="form2" onsubmit="handleConvert(event, 'form2', '/edit-pdf', 'loading2', 'success2', 'btn2')">
-                <input type="file" name="file" accept=".pdf" required>
-                <br>
-                <input type="text" name="text_to_add" placeholder="Text likhein (jaise: Signed)" required>
-                <br>
-                <select name="position">
-                    <option value="top-left">Top-Left (Upar Left)</option>
-                    <option value="top-right">Top-Right (Upar Right)</option>
-                    <option value="center">Center (Beech Mein)</option>
-                    <option value="bottom-left">Bottom-Left (Neeche Left)</option>
-                </select>
-                <br>
-                <button id="btn2" type="submit">Add Text & Download</button>
-                <p id="loading2" class="loading">Processing... Please wait</p>
-                <div id="success2" class="success-box">
-                    <a id="link2" href="#" class="btn-download">⬇️ Download PDF</a>
-                </div>
-            </form>
-        </div>
-
-        <!-- Feature 3: Sign/Stamp PDF (NAYA FEATURE) -->
+        <!-- Feature 2: Drag & Drop Sign PDF -->
         <div class="card">
             <h3>🖋️ Sign / Stamp PDF</h3>
-            <p>PDF par apna sign ya stamp lagayein.</p>
-            <form id="form3" onsubmit="handleConvert(event, 'form3', '/sign-pdf', 'loading3', 'success3', 'btn3')">
+            <p>PDF aur Sign upload karein, phir sign ko drag karke set karein.</p>
+            <form id="form3" onsubmit="handleDragSubmit(event)">
                 <label style="font-size:12px; color:#555;">1. PDF File Chunein:</label>
-                <input type="file" name="pdf_file" accept=".pdf" required>
+                <input type="file" id="pdfFile" accept=".pdf" required>
                 <br>
                 <label style="font-size:12px; color:#555; display:block; margin-top:10px;">2. Sign/Stamp ki Photo (PNG/JPG):</label>
-                <input type="file" name="sign_image" accept="image/png, image/jpeg" required>
-                <br>
-                <label style="font-size:12px; color:#555; display:block; margin-top:10px;">3. Kis Page Par? (Number):</label>
-                <input type="number" name="page_num" value="1" min="1" required>
-                <br>
-                <label style="font-size:12px; color:#555; display:block; margin-top:10px;">4. Kahan Lagana Hai?</label>
-                <select name="position">
-                    <option value="bottom-right">Bottom-Right (Neeche Right)</option>
-                    <option value="bottom-left">Bottom-Left (Neeche Left)</option>
-                    <option value="top-right">Top-Right (Upar Right)</option>
-                    <option value="center">Center (Beech Mein)</option>
-                </select>
-                <br>
+                <input type="file" id="signFile" accept="image/png, image/jpeg" required onchange="previewSign(event)">
+                
+                <!-- Yahan sign drag karega -->
+                <div id="drag-area">
+                    <img id="drag-sign" src="" alt="Sign" draggable="true">
+                </div>
+
                 <button id="btn3" type="submit">Sign PDF & Download</button>
                 <p id="loading3" class="loading">Sign lag raha hai... Please wait</p>
                 <div id="success3" class="success-box">
@@ -108,36 +80,98 @@
     <script>
         async function handleConvert(event, formId, endpoint, loadingId, successId, btnId) {
             event.preventDefault();
-            
             var form = document.getElementById(formId);
             var formData = new FormData(form);
             var loading = document.getElementById(loadingId);
             var successBox = document.getElementById(successId);
             var btn = document.getElementById(btnId);
-            
             loading.style.display = 'block';
             successBox.style.display = 'none';
             btn.disabled = true;
-            
             try {
                 var response = await fetch(endpoint, { method: 'POST', body: formData });
                 var data = await response.json();
-                
                 if (data.success) {
                     loading.style.display = 'none';
                     successBox.style.display = 'block';
-                    var downloadLink = document.getElementById(successId.replace('success', 'link'));
-                    downloadLink.href = '/download/' + data.download_file;
-                } else {
-                    alert('Error: ' + data.error);
-                    loading.style.display = 'none';
-                    btn.disabled = false;
-                }
-            } catch (error) {
-                alert('Kuch ghalat ho gaya. Dobara koshish karein.');
-                loading.style.display = 'none';
-                btn.disabled = false;
+                    document.getElementById(successId.replace('success', 'link')).href = '/download/' + data.download_file;
+                } else { alert('Error: ' + data.error); loading.style.display = 'none'; btn.disabled = false; }
+            } catch (error) { alert('Error!'); loading.style.display = 'none'; btn.disabled = false; }
+        }
+
+        // Drag & Drop Logic
+        var dragArea = document.getElementById('drag-area');
+        var dragSign = document.getElementById('drag-sign');
+        var offsetX = 0, offsetY = 0, isDragging = false;
+
+        function previewSign(event) {
+            var file = event.target.files[0];
+            if (file) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    dragSign.src = e.target.result;
+                    dragArea.style.display = 'block';
+                    dragSign.style.left = '50%';
+                    dragSign.style.top = '50%';
+                };
+                reader.readAsDataURL(file);
             }
+        }
+
+        dragSign.addEventListener('mousedown', function(e) {
+            isDragging = true;
+            offsetX = e.clientX - dragSign.getBoundingClientRect().left;
+            offsetY = e.clientY - dragSign.getBoundingClientRect().top;
+        });
+
+        document.addEventListener('mousemove', function(e) {
+            if (isDragging) {
+                var x = e.clientX - dragArea.getBoundingClientRect().left - offsetX;
+                var y = e.clientY - dragArea.getBoundingClientRect().top - offsetY;
+                dragSign.style.left = x + 'px';
+                dragSign.style.top = y + 'px';
+            }
+        });
+
+        document.addEventListener('mouseup', function() { isDragging = false; });
+
+        async function handleDragSubmit(event) {
+            event.preventDefault();
+            var pdfFile = document.getElementById('pdfFile').files[0];
+            var signFile = document.getElementById('signFile').files[0];
+            if (!pdfFile || !signFile) { alert('Dono files select karein'); return; }
+
+            var dragAreaRect = dragArea.getBoundingClientRect();
+            var signRect = dragSign.getBoundingClientRect();
+
+            var x_percent = ((signRect.left + signRect.width/2) - dragAreaRect.left) / dragAreaRect.width * 100;
+            var y_percent = ((signRect.top + signRect.height/2) - dragAreaRect.top) / dragAreaRect.height * 100;
+            var width_percent = (signRect.width / dragAreaRect.width) * 100;
+
+            var formData = new FormData();
+            formData.append('pdf_file', pdfFile);
+            formData.append('sign_image', signFile);
+            formData.append('x_percent', x_percent);
+            formData.append('y_percent', y_percent);
+            formData.append('width_percent', width_percent);
+
+            var btn = document.getElementById('btn3');
+            var loading = document.getElementById('loading3');
+            var successBox = document.getElementById('success3');
+
+            loading.style.display = 'block';
+            successBox.style.display = 'none';
+            btn.disabled = true;
+
+            try {
+                var response = await fetch('/sign-pdf-drag', { method: 'POST', body: formData });
+                var data = await response.json();
+                if (data.success) {
+                    loading.style.display = 'none';
+                    successBox.style.display = 'block';
+                    document.getElementById('link3').href = '/download/' + data.download_file;
+                } else { alert('Error: ' + data.error); loading.style.display = 'none'; btn.disabled = false; }
+            } catch (error) { alert('Error!'); loading.style.display = 'none'; btn.disabled = false; }
         }
     </script>
 </body>
