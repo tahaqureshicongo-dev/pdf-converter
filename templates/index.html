@@ -20,7 +20,6 @@
         .loading { color: #e5322d; font-weight: bold; margin-top: 15px; display: none; }
         .success-box { display: none; margin-top: 15px; }
 
-        /* PDF Preview Area */
         #pdf-preview-wrapper {
             display: none; margin-top: 15px; 
             border: 2px solid #333; border-radius: 5px;
@@ -95,7 +94,7 @@
     <script>
         var pdfFilename = '';
         var totalPages = 0;
-        var pageElements = []; // Store each page element with its page_num
+        var pageElements = [];
 
         // Feature 1: PDF to Word
         async function handleConvert(event, formId, endpoint, loadingId, successId, btnId) {
@@ -133,6 +132,9 @@
 
             try {
                 var response = await fetch('/preview-pdf', { method: 'POST', body: formData });
+                if (!response.ok) {
+                    throw new Error('Server error: ' + response.status);
+                }
                 var data = await response.json();
                 
                 if (data.success) {
@@ -161,20 +163,18 @@
                         pageElements.push({ page_num: p.page_num, element: pageDiv });
                     });
 
-                    // Sign ko wapas wrapper mein daalo (upar ki taraf)
                     var dragSign = document.getElementById('drag-sign');
                     dragSign.style.display = 'block';
                     dragSign.style.width = '100px';
                     dragSign.style.left = '50%';
                     dragSign.style.top = '50px';
                     wrapper.appendChild(dragSign);
-
                     updateSelectedPage();
                 } else {
                     wrapper.innerHTML = '<p style="color:red; padding:20px;">Error: ' + data.error + '</p>';
                 }
             } catch (error) {
-                wrapper.innerHTML = '<p style="color:red; padding:20px;">PDF load nahi ho payi</p>';
+                wrapper.innerHTML = '<p style="color:red; padding:20px;">Error: ' + error.message + '</p>';
             }
         }
 
@@ -212,7 +212,6 @@
             var x = e.clientX - wrapperRect.left - offsetX + wrapper.scrollLeft;
             var y = e.clientY - wrapperRect.top - offsetY + wrapper.scrollTop;
             
-            // Bound check
             x = Math.max(0, Math.min(x, wrapper.scrollWidth - dragSign.offsetWidth));
             y = Math.max(0, Math.min(y, wrapper.scrollHeight - dragSign.offsetHeight));
 
@@ -233,15 +232,13 @@
 
             var signTop = parseInt(dragSign.style.top) || 0;
             var signCenterY = signTop + dragSign.offsetHeight / 2;
-            var wrapperScrollTop = wrapper.scrollTop;
-            var currentY = signCenterY + 0; // Relative to wrapper content
 
             var selectedPage = 1;
             for (var i = 0; i < pageElements.length; i++) {
                 var pageEl = pageElements[i].element;
                 var pageTop = pageEl.offsetTop;
                 var pageBottom = pageTop + pageEl.offsetHeight;
-                if (currentY >= pageTop && currentY <= pageBottom) {
+                if (signCenterY >= pageTop && signCenterY <= pageBottom) {
                     selectedPage = pageElements[i].page_num;
                     break;
                 }
@@ -258,7 +255,6 @@
             var signFile = document.getElementById('signFile').files[0];
             if (!pdfFile || !signFile) { alert('Dono files select karein'); return; }
 
-            // Determine which page
             var signTop = parseInt(dragSign.style.top) || 0;
             var signLeft = parseInt(dragSign.style.left) || 0;
             var signCenterY = signTop + dragSign.offsetHeight / 2;
@@ -284,7 +280,6 @@
             var pageWidth = pageEl.offsetWidth;
             var pageHeight = pageEl.offsetHeight;
 
-            // Relative position as percentage within the page
             var x_percent = ((signCenterX - pageLeft) / pageWidth) * 100;
             var y_percent = ((signCenterY - pageTop) / pageHeight) * 100;
             var width_percent = (dragSign.offsetWidth / pageWidth) * 100;

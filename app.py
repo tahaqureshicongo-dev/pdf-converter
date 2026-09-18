@@ -31,39 +31,41 @@ def convert():
         return jsonify({'success': True, 'download_file': os.path.basename(docx_path)})
     return jsonify({'success': False, 'error': 'Only PDF files allowed'})
 
-# NAYA: PDF ke pages ka preview (images) bhejne ke liye
+# Feature 2: PDF Preview (pages images mein convert karke bhejna)
 @app.route('/preview-pdf', methods=['POST'])
 def preview_pdf():
-    if 'file' not in request.files:
-        return jsonify({'success': False, 'error': 'No file'})
-    file = request.files['file']
-    if file and file.filename.endswith('.pdf'):
-        filename = secure_filename(file.filename)
-        pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(pdf_path)
-        
-        doc = fitz.open(pdf_path)
-        pages_data = []
-        # Maximum 20 pages preview ke liye (bade PDF ke liye slow na ho)
-        max_pages = min(len(doc), 20)
-        for i in range(max_pages):
-            page = doc[i]
-            # 1.2x zoom par render karo (quality aur speed ka balance)
-            pix = page.get_pixmap(matrix=fitz.Matrix(1.2, 1.2))
-            img_bytes = pix.tobytes("png")
-            img_base64 = base64.b64encode(img_bytes).decode('utf-8')
-            pages_data.append({
-                'page_num': i + 1,
-                'image': f"data:image/png;base64,{img_base64}",
-                'width': pix.width,
-                'height': pix.height
-            })
-        total_pages = len(doc)
-        doc.close()
-        return jsonify({'success': True, 'pages': pages_data, 'pdf_filename': filename, 'total_pages': total_pages})
-    return jsonify({'success': False, 'error': 'Only PDF allowed'})
+    try:
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': 'No file uploaded'})
+        file = request.files['file']
+        if file and file.filename.endswith('.pdf'):
+            filename = secure_filename(file.filename)
+            pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(pdf_path)
+            
+            doc = fitz.open(pdf_path)
+            pages_data = []
+            max_pages = min(len(doc), 10) # Sirf 10 pages preview ke liye (memory bachane ke liye)
+            for i in range(max_pages):
+                page = doc[i]
+                # Resolution 0.8x (memory aur speed ka balance)
+                pix = page.get_pixmap(matrix=fitz.Matrix(0.8, 0.8))
+                img_bytes = pix.tobytes("png")
+                img_base64 = base64.b64encode(img_bytes).decode('utf-8')
+                pages_data.append({
+                    'page_num': i + 1,
+                    'image': f"data:image/png;base64,{img_base64}",
+                    'width': pix.width,
+                    'height': pix.height
+                })
+            total_pages = len(doc)
+            doc.close()
+            return jsonify({'success': True, 'pages': pages_data, 'pdf_filename': filename, 'total_pages': total_pages})
+        return jsonify({'success': False, 'error': 'Only PDF allowed'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
-# Feature 2: Drag & Drop Sign PDF (ab page selection ke saath)
+# Feature 3: Drag & Drop Sign PDF
 @app.route('/sign-pdf-drag', methods=['POST'])
 def sign_pdf_drag():
     if 'pdf_file' not in request.files or 'sign_image' not in request.files:
@@ -72,7 +74,7 @@ def sign_pdf_drag():
     pdf_file = request.files['pdf_file']
     sign_image = request.files['sign_image']
     
-    page_num = int(request.form.get('page_num', 1)) - 1  # 0-based index
+    page_num = int(request.form.get('page_num', 1)) - 1
     x_percent = float(request.form.get('x_percent', 50))
     y_percent = float(request.form.get('y_percent', 50))
     width_percent = float(request.form.get('width_percent', 20))
@@ -89,7 +91,6 @@ def sign_pdf_drag():
         
         doc = fitz.open(pdf_path)
         
-        # Page number valid karo
         if page_num < 0 or page_num >= len(doc):
             page_num = 0
         
