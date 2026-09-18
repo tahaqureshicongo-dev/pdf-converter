@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, send_file, jsonify
 import os
+import base64
 from pdf2docx import Converter
 from werkzeug.utils import secure_filename
 import fitz  # PyMuPDF
@@ -30,7 +31,39 @@ def convert():
         return jsonify({'success': True, 'download_file': os.path.basename(docx_path)})
     return jsonify({'success': False, 'error': 'Only PDF files allowed'})
 
-# Feature 2: Drag & Drop Sign PDF
+# NAYA: PDF ke pages ka preview (images) bhejne ke liye
+@app.route('/preview-pdf', methods=['POST'])
+def preview_pdf():
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'error': 'No file'})
+    file = request.files['file']
+    if file and file.filename.endswith('.pdf'):
+        filename = secure_filename(file.filename)
+        pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(pdf_path)
+        
+        doc = fitz.open(pdf_path)
+        pages_data = []
+        # Maximum 20 pages preview ke liye (bade PDF ke liye slow na ho)
+        max_pages = min(len(doc), 20)
+        for i in range(max_pages):
+            page = doc[i]
+            # 1.2x zoom par render karo (quality aur speed ka balance)
+            pix = page.get_pixmap(matrix=fitz.Matrix(1.2, 1.2))
+            img_bytes = pix.tobytes("png")
+            img_base64 = base64.b64encode(img_bytes).decode('utf-8')
+            pages_data.append({
+                'page_num': i + 1,
+                'image': f"data:image/png;base64,{img_base64}",
+                'width': pix.width,
+                'height': pix.height
+            })
+        total_pages = len(doc)
+        doc.close()
+        return jsonify({'success': True, 'pages': pages_data, 'pdf_filename': filename, 'total_pages': total_pages})
+    return jsonify({'success': False, 'error': 'Only PDF allowed'})
+
+# Feature 2: Drag & Drop Sign PDF (ab page selection ke saath)
 @app.route('/sign-pdf-drag', methods=['POST'])
 def sign_pdf_drag():
     if 'pdf_file' not in request.files or 'sign_image' not in request.files:
@@ -39,6 +72,7 @@ def sign_pdf_drag():
     pdf_file = request.files['pdf_file']
     sign_image = request.files['sign_image']
     
+    page_num = int(request.form.get('page_num', 1)) - 1  # 0-based index
     x_percent = float(request.form.get('x_percent', 50))
     y_percent = float(request.form.get('y_percent', 50))
     width_percent = float(request.form.get('width_percent', 20))
@@ -54,7 +88,12 @@ def sign_pdf_drag():
         sign_image.save(sign_path)
         
         doc = fitz.open(pdf_path)
-        page = doc[0]
+        
+        # Page number valid karo
+        if page_num < 0 or page_num >= len(doc):
+            page_num = 0
+        
+        page = doc[page_num]
         page_width = page.rect.width
         page_height = page.rect.height
         
