@@ -31,7 +31,7 @@ def convert():
         return jsonify({'success': True, 'download_file': os.path.basename(docx_path)})
     return jsonify({'success': False, 'error': 'Only PDF files allowed'})
 
-# Feature 2: PDF Preview (pages images mein convert karke bhejna)
+# Feature 2: PDF Preview
 @app.route('/preview-pdf', methods=['POST'])
 def preview_pdf():
     try:
@@ -45,11 +45,10 @@ def preview_pdf():
             
             doc = fitz.open(pdf_path)
             pages_data = []
-            max_pages = min(len(doc), 10) # Sirf 10 pages preview ke liye (memory bachane ke liye)
+            max_pages = min(len(doc), 10)
             for i in range(max_pages):
                 page = doc[i]
-                # Resolution 0.8x (memory aur speed ka balance)
-                pix = page.get_pixmap(matrix=fitz.Matrix(0.8, 0.8))
+                pix = page.get_pixmap(matrix=fitz.Matrix(1.5, 1.5))
                 img_bytes = pix.tobytes("png")
                 img_base64 = base64.b64encode(img_bytes).decode('utf-8')
                 pages_data.append({
@@ -65,11 +64,11 @@ def preview_pdf():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
-# Feature 3: Drag & Drop Sign PDF
+# Feature 3: Drag & Drop Sign PDF (High Quality + Fixed Aspect Ratio)
 @app.route('/sign-pdf-drag', methods=['POST'])
 def sign_pdf_drag():
     if 'pdf_file' not in request.files or 'sign_image' not in request.files:
-        return jsonify({'success': False, 'error': 'PDF aur Signature dono upload karein'})
+        return jsonify({'success': False, 'error': 'PDF and Signature both required'})
     
     pdf_file = request.files['pdf_file']
     sign_image = request.files['sign_image']
@@ -89,6 +88,15 @@ def sign_pdf_drag():
         pdf_file.save(pdf_path)
         sign_image.save(sign_path)
         
+        # Get actual sign image dimensions to preserve aspect ratio
+        try:
+            sign_pix = fitz.Pixmap(sign_path)
+            sign_actual_width = sign_pix.width
+            sign_actual_height = sign_pix.height
+            actual_ratio = sign_actual_height / sign_actual_width
+        except Exception:
+            actual_ratio = 0.5
+        
         doc = fitz.open(pdf_path)
         
         if page_num < 0 or page_num >= len(doc):
@@ -99,16 +107,18 @@ def sign_pdf_drag():
         page_height = page.rect.height
         
         img_width = (width_percent / 100) * page_width
-        img_height = img_width * 0.4
+        img_height = img_width * actual_ratio
         
         x = (x_percent / 100) * page_width - (img_width / 2)
         y = (y_percent / 100) * page_height - (img_height / 2)
         
         rect = fitz.Rect(x, y, x + img_width, y + img_height)
-        page.insert_image(rect, filename=sign_path)
+        
+        # Insert with high quality
+        page.insert_image(rect, filename=sign_path, keep_proportion=True)
         
         signed_path = pdf_path.replace('.pdf', '_signed.pdf')
-        doc.save(signed_path)
+        doc.save(signed_path, garbage=3, deflate=True)
         doc.close()
         
         return jsonify({'success': True, 'download_file': os.path.basename(signed_path)})
