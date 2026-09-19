@@ -131,6 +131,17 @@ def download_file(filename):
     if os.path.exists(file_path):
         return send_file(file_path, as_attachment=True)
     return "File not found", 404
+@app.route('/sitemap.xml')
+def sitemap():
+    return '''<?xml version="1.0" encoding="UTF-8"?>
+    <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+        <url>
+            <loc>https://pdf-converter-r7sf.onrender.com/</loc>
+            <lastmod>2026-09-19</lastmod>
+            <changefreq>weekly</changefreq>
+            <priority>1.0</priority>
+        </url>
+    </urlset>''', 200, {'Content-Type': 'application/xml'}
 
 if __name__ == '__main__':
     app.run(debug=True)
