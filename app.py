@@ -14,6 +14,22 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 def home():
     return render_template('index.html')
 
+@app.route('/privacy')
+def privacy():
+    return render_template('privacy.html')
+
+@app.route('/about')
+def about():
+    return render_template('about.html')
+
+@app.route('/contact')
+def contact():
+    return render_template('contact.html')
+
+@app.route('/terms')
+def terms():
+    return render_template('terms.html')
+
 # Feature 1: PDF to Word
 @app.route('/convert', methods=['POST'])
 def convert():
@@ -64,7 +80,7 @@ def preview_pdf():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
-# Feature 3: Drag & Drop Sign PDF (High Quality + Fixed Aspect Ratio)
+# Feature 3: Drag & Drop Sign PDF
 @app.route('/sign-pdf-drag', methods=['POST'])
 def sign_pdf_drag():
     if 'pdf_file' not in request.files or 'sign_image' not in request.files:
@@ -88,7 +104,6 @@ def sign_pdf_drag():
         pdf_file.save(pdf_path)
         sign_image.save(sign_path)
         
-        # Get actual sign image dimensions to preserve aspect ratio
         try:
             sign_pix = fitz.Pixmap(sign_path)
             sign_actual_width = sign_pix.width
@@ -113,8 +128,6 @@ def sign_pdf_drag():
         y = (y_percent / 100) * page_height - (img_height / 2)
         
         rect = fitz.Rect(x, y, x + img_width, y + img_height)
-        
-        # Insert with high quality
         page.insert_image(rect, filename=sign_path, keep_proportion=True)
         
         signed_path = pdf_path.replace('.pdf', '_signed.pdf')
@@ -131,6 +144,7 @@ def download_file(filename):
     if os.path.exists(file_path):
         return send_file(file_path, as_attachment=True)
     return "File not found", 404
+
 @app.route('/sitemap.xml')
 def sitemap():
     return '''<?xml version="1.0" encoding="UTF-8"?>
@@ -140,6 +154,30 @@ def sitemap():
             <lastmod>2026-09-19</lastmod>
             <changefreq>weekly</changefreq>
             <priority>1.0</priority>
+        </url>
+        <url>
+            <loc>https://pdf-converter-r7sf.onrender.com/privacy</loc>
+            <lastmod>2026-09-20</lastmod>
+            <changefreq>monthly</changefreq>
+            <priority>0.5</priority>
+        </url>
+        <url>
+            <loc>https://pdf-converter-r7sf.onrender.com/about</loc>
+            <lastmod>2026-09-20</lastmod>
+            <changefreq>monthly</changefreq>
+            <priority>0.5</priority>
+        </url>
+        <url>
+            <loc>https://pdf-converter-r7sf.onrender.com/contact</loc>
+            <lastmod>2026-09-20</lastmod>
+            <changefreq>monthly</changefreq>
+            <priority>0.5</priority>
+        </url>
+        <url>
+            <loc>https://pdf-converter-r7sf.onrender.com/terms</loc>
+            <lastmod>2026-09-20</lastmod>
+            <changefreq>monthly</changefreq>
+            <priority>0.5</priority>
         </url>
     </urlset>''', 200, {'Content-Type': 'application/xml'}
 
